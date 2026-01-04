@@ -55,17 +55,10 @@ static_sites:
     envs:
       - key: VITE_API_URL
         value: /api
-    routes:
-      - path: /
     catchall_document: index.html
 
 ingress:
   rules:
-    - component:
-        name: client
-      match:
-        path:
-          prefix: /
     - component:
         name: server
       match:
@@ -81,3 +74,8 @@ ingress:
       match:
         path:
           prefix: /uploads
+    - component:
+        name: client
+      match:
+        path:
+          prefix: /
