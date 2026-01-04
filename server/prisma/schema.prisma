@@ -1,0 +1,600 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ USER & AUTH ============
+
+enum Role {
+  ADMIN
+  EDITOR
+  MEMBER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(MEMBER)
+  avatar    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  posts            Post[]
+  sermons          Sermon[]
+  donations        Donation[]
+  eventRegistrations EventRegistration[]
+  memberProfile    MemberProfile?
+  prayerRequests   PrayerRequest[]
+  ministryLeader   Ministry[] @relation("MinistryLeader")
+  chatSessions     ChatSession[]
+  chatMessages     ChatMessage[]
+  smsCampaigns     SMSCampaign[]
+  socialPosts      SocialPost[]
+
+  @@map("users")
+}
+
+// ============ CONTENT MANAGEMENT ============
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Post {
+  id            String     @id @default(cuid())
+  title         String
+  slug          String     @unique
+  content       String     @db.Text
+  excerpt       String?    @db.Text
+  featuredImage String?
+  status        PostStatus @default(DRAFT)
+  publishedAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  author     User      @relation(fields: [authorId], references: [id])
+  authorId   String
+  category   Category? @relation(fields: [categoryId], references: [id])
+  categoryId String?
+
+  @@index([authorId])
+  @@index([categoryId])
+  @@index([status, publishedAt(sort: Desc)])
+  @@map("posts")
+}
+
+model Category {
+  id          String @id @default(cuid())
+  name        String @unique
+  slug        String @unique
+  description String?
+
+  posts Post[]
+
+  @@map("categories")
+}
+
+model Page {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  content     String   @db.Text
+  template    String   @default("default")
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("pages")
+}
+
+// ============ SERMONS & MEDIA ============
+
+model Series {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sermons Sermon[]
+
+  @@map("series")
+}
+
+model Sermon {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String?  @db.Text
+  speaker     String
+  scripture   String?
+  audioUrl    String?
+  videoUrl    String?
+  thumbnailUrl String?
+  duration    Int?     // Duration in seconds
+  date        DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  series   Series? @relation(fields: [seriesId], references: [id])
+  seriesId String?
+  author   User    @relation(fields: [authorId], references: [id])
+  authorId String
+
+  @@index([seriesId])
+  @@index([authorId])
+  @@index([date(sort: Desc)])
+  @@index([speaker])
+  @@map("sermons")
+}
+
+// ============ EVENTS ============
+
+model Event {
+  id                   String   @id @default(cuid())
+  title                String
+  slug                 String   @unique
+  description          String?  @db.Text
+  location             String?
+  imageUrl             String?
+  startDate            DateTime
+  endDate              DateTime?
+  isRecurring          Boolean  @default(false)
+  recurrenceRule       String?  // iCal RRULE format
+  registrationRequired Boolean  @default(false)
+  maxAttendees         Int?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  registrations EventRegistration[]
+
+  @@index([startDate(sort: Desc)])
+  @@map("events")
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model EventRegistration {
+  id         String             @id @default(cuid())
+  guestName  String?
+  guestEmail String?
+  guestCount Int                @default(1)
+  status     RegistrationStatus @default(PENDING)
+  notes      String?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  // Relations
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+  user    User?  @relation(fields: [userId], references: [id])
+  userId  String?
+
+  @@index([eventId])
+  @@index([userId])
+  @@map("event_registrations")
+}
+
+// ============ DONATIONS ============
+
+model GivingCategory {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String?
+  isActive    Boolean @default(true)
+
+  donations Donation[]
+
+  @@map("giving_categories")
+}
+
+enum DonationStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Donation {
+  id              String         @id @default(cuid())
+  amount          Decimal        @db.Decimal(10, 2)
+  currency        String         @default("USD")
+  stripePaymentId String?        @unique
+  status          DonationStatus @default(PENDING)
+  isAnonymous     Boolean        @default(false)
+  donorName       String?
+  donorEmail      String?
+  notes           String?
+  createdAt       DateTime       @default(now())
+
+  // Relations
+  user       User?          @relation(fields: [userId], references: [id])
+  userId     String?
+  category   GivingCategory @relation(fields: [categoryId], references: [id])
+  categoryId String
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("donations")
+}
+
+// ============ MEMBER PORTAL ============
+
+model MemberProfile {
+  id           String    @id @default(cuid())
+  phone        String?
+  address      String?
+  city         String?
+  state        String?
+  zipCode      String?
+  country      String?
+  birthday     DateTime?
+  anniversary  DateTime?
+  memberSince  DateTime  @default(now())
+  bio          String?   @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String     @unique
+  ministries Ministry[] @relation("MemberMinistries")
+
+  @@map("member_profiles")
+}
+
+model Ministry {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?  @db.Text
+  imageUrl    String?
+  meetingTime String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  leader   User?   @relation("MinistryLeader", fields: [leaderId], references: [id])
+  leaderId String?
+  members  MemberProfile[] @relation("MemberMinistries")
+
+  @@map("ministries")
+}
+
+enum PrayerRequestStatus {
+  ACTIVE
+  ANSWERED
+  ARCHIVED
+}
+
+model PrayerRequest {
+  id          String              @id @default(cuid())
+  title       String
+  content     String              @db.Text
+  isAnonymous Boolean             @default(false)
+  isPublic    Boolean             @default(false)
+  status      PrayerRequestStatus @default(ACTIVE)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@map("prayer_requests")
+}
+
+// ============ SITE SETTINGS ============
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  type      String   @default("string") // string, json, boolean, number
+  category  String   @default("general") // general, email, sms, payment, social
+  label     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@map("site_settings")
+}
+
+// ============ HERO SLIDES ============
+
+model HeroSlide {
+  id           String   @id @default(cuid())
+  title        String
+  subtitle     String?
+  description  String?  @db.Text
+  imageUrl     String
+  buttonText   String?
+  buttonLink   String?
+  buttonText2  String?
+  buttonLink2  String?
+  animation    String   @default("fade") // fade, slide, zoom
+  order        Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive, order])
+  @@map("hero_slides")
+}
+
+// ============ LIVE CHAT ============
+
+enum ChatSessionStatus {
+  ACTIVE
+  CLOSED
+  WAITING
+}
+
+model ChatSession {
+  id           String            @id @default(cuid())
+  visitorName  String?
+  visitorEmail String?
+  visitorId    String            // Browser fingerprint or random ID
+  status       ChatSessionStatus @default(WAITING)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  closedAt     DateTime?
+
+  // Relations
+  messages  ChatMessage[]
+  assignee  User?         @relation(fields: [assigneeId], references: [id])
+  assigneeId String?
+
+  @@index([status, updatedAt(sort: Desc)])
+  @@index([visitorId])
+  @@index([assigneeId])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  isFromVisitor Boolean @default(true)
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String
+  sender    User?       @relation(fields: [senderId], references: [id])
+  senderId  String?
+
+  @@index([sessionId, createdAt])
+  @@map("chat_messages")
+}
+
+// ============ PAGE BACKGROUNDS ============
+
+enum BackgroundType {
+  SOLID
+  GRADIENT
+  IMAGE
+}
+
+model PageBackground {
+  id              String         @id @default(cuid())
+  pageSlug        String         @unique
+  backgroundType  BackgroundType @default(SOLID)
+  solidColor      String?        @default("#1f2937")
+  gradientFrom    String?
+  gradientTo      String?
+  gradientAngle   Int?           @default(180)
+  imageUrl        String?
+  overlayOpacity  Int?           @default(50)
+  overlayColor    String?        @default("#000000")
+  titleColor      String?        @default("#ffffff")
+  subtitleColor   String?        @default("#d1d5db")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@map("page_backgrounds")
+}
+
+// ============ SMS CAMPAIGNS ============
+
+enum SMSCampaignStatus {
+  DRAFT
+  SCHEDULED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum SMSTargetType {
+  ALL_MEMBERS
+  MINISTRY
+  EVENT_REGISTRANTS
+  CUSTOM
+}
+
+model SMSCampaign {
+  id              String            @id @default(cuid())
+  name            String
+  message         String            @db.Text
+  targetType      SMSTargetType
+  targetId        String?
+  status          SMSCampaignStatus @default(DRAFT)
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  totalRecipients Int               @default(0)
+  sentCount       Int               @default(0)
+  failedCount     Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  createdBy   User           @relation(fields: [createdById], references: [id])
+  createdById String
+  recipients  SMSRecipient[]
+
+  @@index([status, scheduledAt])
+  @@index([createdById])
+  @@map("sms_campaigns")
+}
+
+model SMSRecipient {
+  id           String    @id @default(cuid())
+  phone        String
+  name         String?
+  status       String    @default("PENDING")
+  sentAt       DateTime?
+  errorMessage String?
+
+  // Relations
+  campaign   SMSCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId String
+  userId     String?
+
+  @@index([campaignId, status])
+  @@map("sms_recipients")
+}
+
+// ============ SERVICE TIMES ============
+
+model ServiceTime {
+  id          String   @id @default(cuid())
+  name        String
+  day         String
+  time        String
+  location    String?
+  description String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, order])
+  @@map("service_times")
+}
+
+// ============ ABOUT PAGE CONTENT ============
+
+model AboutContent {
+  id        String   @id @default(cuid())
+  section   String   @unique // story, mission, vision
+  title     String
+  content   String   @db.Text
+  imageUrl  String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("about_content")
+}
+
+model CoreValue {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  icon        String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, order])
+  @@map("core_values")
+}
+
+model LeadershipMember {
+  id        String   @id @default(cuid())
+  name      String
+  role      String
+  bio       String?  @db.Text
+  imageUrl  String?
+  email     String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, order])
+  @@map("leadership_members")
+}
+
+// ============ SOCIAL MEDIA ============
+
+enum SocialPlatform {
+  FACEBOOK
+  INSTAGRAM
+  TIKTOK
+  TWITTER
+}
+
+enum SocialPostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+model SocialAccount {
+  id           String         @id @default(cuid())
+  platform     SocialPlatform
+  accountName  String
+  accountId    String
+  accessToken  String         @db.Text
+  refreshToken String?        @db.Text
+  tokenExpiry  DateTime?
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // Relations
+  posts SocialPost[]
+
+  @@unique([platform, accountId])
+  @@map("social_accounts")
+}
+
+model SocialPost {
+  id             String           @id @default(cuid())
+  content        String           @db.Text
+  mediaUrls      String[]
+  mediaType      String?
+  status         SocialPostStatus @default(DRAFT)
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
+  platformPostId String?
+  errorMessage   String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  // Relations
+  account     SocialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId   String
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  createdById String
+
+  @@index([status, scheduledAt])
+  @@index([accountId])
+  @@index([createdById])
+  @@map("social_posts")
+}
