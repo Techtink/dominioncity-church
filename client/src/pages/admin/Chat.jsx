@@ -33,7 +33,7 @@ const Chat = () => {
 
   // Socket.io connection
   useEffect(() => {
-    const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5001'
+    const serverUrl = import.meta.env.VITE_SERVER_URL || ''
     socketRef.current = io(serverUrl, {
       transports: ['websocket', 'polling'],
     })
