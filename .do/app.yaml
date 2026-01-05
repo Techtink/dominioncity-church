@@ -32,7 +32,7 @@ services:
         value: ${db.DATABASE_URL}
       - key: JWT_SECRET
         scope: RUN_TIME
-        type: SECRET
+        value: "u7NTPAKGa56CmAmkut3md2lTlAn9QOpl7MoqjxEklTE="
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: CLIENT_URL

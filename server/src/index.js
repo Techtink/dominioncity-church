@@ -29,6 +29,9 @@ const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 5001;
 
+// Trust proxy for DigitalOcean load balancer
+app.set('trust proxy', 1);
+
 // Socket.io setup
 const io = new Server(httpServer, {
   cors: {
