@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma.js';
 
-const prisma = new PrismaClient();
+
 
 // Rate limiting: 10 SMS per second
 const SMS_RATE_LIMIT = 10;

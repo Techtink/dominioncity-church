@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma.js';
 import { authenticate, adminOnly } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 // Default settings structure
 const defaultSettings = {

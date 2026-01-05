@@ -1,9 +1,9 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma.js';
 import { authenticate, adminOnly } from '../middleware/auth.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
+
 
 // Get all campaigns (admin only)
 router.get('/campaigns', authenticate, adminOnly, async (req, res, next) => {

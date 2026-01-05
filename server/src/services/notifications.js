@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma.js';
 
-const prisma = new PrismaClient();
+
 
 // Get settings from database
 async function getSettings() {

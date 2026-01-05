@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { body, param, query } from 'express-validator';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma.js';
 import { authenticate, editorOrAdmin, optionalAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 // Helper to generate slug
 const generateSlug = (title) => {

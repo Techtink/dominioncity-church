@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma.js';
 import { publishToSocialMedia, refreshExpiredTokens } from './socialService.js';
 
-const prisma = new PrismaClient();
+
 
 const CHECK_INTERVAL = 60000; // 60 seconds
 
