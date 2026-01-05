@@ -63,16 +63,19 @@ ingress:
   rules:
     - component:
         name: server
+        preserve_path_prefix: true
       match:
         path:
           prefix: /api
     - component:
         name: server
+        preserve_path_prefix: true
       match:
         path:
           prefix: /socket.io
     - component:
         name: server
+        preserve_path_prefix: true
       match:
         path:
           prefix: /uploads
